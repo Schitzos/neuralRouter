@@ -1,1 +1,0 @@
-"""Infrastructure layer - External interfaces and adapters."""
