@@ -1,0 +1,10 @@
+{
+  "model": "auto",
+  "messages": [
+    {
+      "role": "user", 
+      "content": "What is 2+2?"
+    }
+  ],
+  "stream": false
+}

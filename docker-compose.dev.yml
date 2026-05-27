@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # Database
+  langfuse-db:
+    image: postgres:16
+    container_name: schitzo-langfuse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: langfuse
+    volumes:
+      - langfuse_db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Langfuse observability platform
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: schitzo-langfuse
+    restart: unless-stopped
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@langfuse-db:5432/langfuse
+      NEXTAUTH_SECRET: mysecret
+      SALT: mysalt
+      NEXTAUTH_URL: http://localhost:3000
+      TELEMETRY_ENABLED: false
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://$(hostname):3000/api/public/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  # Neural Router API
+  router:
+    build:
+      context: ./router
+      dockerfile: Dockerfile
+    container_name: schitzo-router
+    restart: unless-stopped
+    depends_on:
+      langfuse:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      - LANGFUSE_PUBLIC_KEY=pk-lf-c36875c4-0db6-4354-b17e-4454b709936c
+      - LANGFUSE_SECRET_KEY=sk-lf-20910671-bdf1-4555-a04e-8a6b08380ae6
+      - LANGFUSE_HOST=http://langfuse:3000
+      - MOONSHOT_API_KEY=${MOONSHOT_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_API_BASE=http://host.docker.internal:11434
+    volumes:
+      - router_data:/app/data
+      - ./config.yaml:/app/config.yaml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  langfuse_db_data:
+  router_data:

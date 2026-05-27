@@ -1,0 +1,132 @@
+# Schitzo Neural Router Configuration
+
+server:
+  host: "0.0.0.0"
+  port: 8000
+  auth_token: ""  # empty = no auth (use .env for secrets)
+
+# Classifier settings
+classifier:
+  model: "qwen2.5:7b"
+  ollama_url: "http://host.docker.internal:11434"
+  timeout_ms: 5000
+  default_on_failure: "high"  # if classifier fails, assume high
+
+# Tier configuration
+tiers:
+  chat:
+    models:
+      - "moonshot/moonshot-v1-8k"
+    description: "Casual conversation, greetings, small talk, confirmations"
+
+  low:
+    models:
+      - "moonshot/moonshot-v1-8k"
+      - "moonshot/moonshot-v1-32k"
+    description: "Simple Q&A, formatting, translation, short answers"
+
+  high:
+    models:
+      - "gemini/gemini-2.5-flash"
+      - "moonshot/moonshot-v1-128k"
+      - "moonshot/moonshot-v1-32k"
+    description: "Complex reasoning, architecture, code generation"
+
+# Default model for each tier (first in the list)
+routing:
+  chat_default: "ollama/qwen2.5:7b"
+  low_default: "ollama/qwen2.5:7b"
+  high_default: "gemini/gemini-2.5-flash"
+
+# Fallback chains (tried in order on failure)
+fallback:
+  low:
+    - "ollama/qwen2.5:7b"
+  high:
+    - "gemini/gemini-2.5-flash"
+    - "ollama/qwen2.5:7b"
+
+# Bypass keyword mappings
+bypass:
+  "use kimi to": "moonshot/moonshot-v1-128k"
+  "use moonshot to": "moonshot/moonshot-v1-128k"
+  "use ollama to": "ollama/qwen2.5:7b"
+  "use gemini to": "gemini/gemini-2.5-flash"
+
+# Observability
+observability:
+  websocket: true
+  langfuse:
+    enabled: true
+    host: "http://localhost:3000"
+    public_key: ""   # use .env
+    secret_key: ""   # use .env
+
+# Timeouts
+timeouts:
+  classification_ms: 2000
+  model_request_s: 30
+  stream_idle_s: 60
+
+# Logging
+logging:
+  level: "info"  # debug, info, warn, error
+  log_prompts: false  # log full prompts (privacy concern)
+  log_dir: "~/.schitzo/logs"
+
+# Model Registry
+models:
+  moonshot/moonshot-v1-8k:
+    provider: "moonshot"
+    litellm_model: "moonshot/moonshot-v1-8k"
+    tier: "low"
+    max_tokens: 8192
+    cost_per_1m_input: 12.0
+    cost_per_1m_output: 12.0
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: false
+
+  moonshot/moonshot-v1-32k:
+    provider: "moonshot"
+    litellm_model: "moonshot/moonshot-v1-32k"
+    tier: "low"
+    max_tokens: 32768
+    cost_per_1m_input: 24.0
+    cost_per_1m_output: 24.0
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: false
+
+  moonshot/moonshot-v1-128k:
+    provider: "moonshot"
+    litellm_model: "moonshot/moonshot-v1-128k"
+    tier: "high"
+    max_tokens: 131072
+    cost_per_1m_input: 60.0
+    cost_per_1m_output: 60.0
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: false
+
+  ollama/qwen2.5:7b:
+    provider: "ollama"
+    litellm_model: "ollama/qwen2.5:7b"
+    tier: "low"
+    max_tokens: 32768
+    cost_per_1m_input: 0
+    cost_per_1m_output: 0
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: false
+
+  gemini/gemini-2.5-flash:
+    provider: "gemini"
+    litellm_model: "gemini/gemini-2.5-flash"
+    tier: "high"
+    max_tokens: 1048576
+    cost_per_1m_input: 0.15
+    cost_per_1m_output: 0.60
+    supports_streaming: true
+    supports_tools: true
+    supports_vision: true

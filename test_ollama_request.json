@@ -1,0 +1,10 @@
+{
+  "model": "auto",
+  "messages": [
+    {
+      "role": "user", 
+      "content": "use ollama to answer: what is 2+2?"
+    }
+  ],
+  "stream": false
+}
